@@ -222,7 +222,8 @@ export class SessionManifestStore {
 				sessionId,
 				path,
 				error,
-				recovery: "Canonical history is unchanged; deleting the sidecar is safe.",
+				recovery:
+					"Canonical history is unchanged; deleting the sidecar is safe.",
 			});
 			return undefined;
 		}

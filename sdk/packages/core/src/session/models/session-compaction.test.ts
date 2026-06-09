@@ -118,9 +118,7 @@ describe("session compaction state", () => {
 			updated_at: "not-a-date",
 			source_message_count: 1,
 			source_prefix_hash: "sha256:test",
-			messages: [
-				{ id: "summary", role: "user" as const, content: "summary" },
-			],
+			messages: [{ id: "summary", role: "user" as const, content: "summary" }],
 		});
 
 		expect(state).toBeUndefined();

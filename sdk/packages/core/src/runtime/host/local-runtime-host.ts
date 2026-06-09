@@ -1123,7 +1123,9 @@ export class LocalRuntimeHost implements RuntimeHost {
 		session: ActiveSession,
 		state: SessionCompactionState,
 	): Promise<{ updated: boolean }> {
-		if (!(await this.canPersistCompactionState(session.sessionId, state, session))) {
+		if (
+			!(await this.canPersistCompactionState(session.sessionId, state, session))
+		) {
 			return { updated: false };
 		}
 		return await this.enqueueCompactionStateWrite(session, async () => {

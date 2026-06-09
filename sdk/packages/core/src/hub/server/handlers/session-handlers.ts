@@ -62,10 +62,10 @@ function stripServerOwnedSessionMetadata(
 
 function authorizeSessionCompactionAccess(input: {
 	sessionId: string;
-		ctx: HubTransportContext;
-		clientId: string;
-		envelope: HubCommandEnvelope;
-	}): HubReplyEnvelope | undefined {
+	ctx: HubTransportContext;
+	clientId: string;
+	envelope: HubCommandEnvelope;
+}): HubReplyEnvelope | undefined {
 	const ownerClientId = getCapabilityOwnerClientId(input.ctx, input.sessionId);
 	if (!ownerClientId) {
 		return errorReply(
