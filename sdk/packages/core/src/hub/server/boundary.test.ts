@@ -859,6 +859,69 @@ describe("HubServerTransport boundaries", () => {
 		expect(readSessionCompactionState).not.toHaveBeenCalled();
 	});
 
+	it("does not grant compaction sidecar ownership from session attach", async () => {
+		const state = createSessionCompactionState({
+			sourceMessages: [{ role: "user", content: "source" }],
+			compactedMessages: [{ role: "user", content: "summary" }],
+			conversationId: "session-1",
+		});
+		const readSessionCompactionState = vi.fn().mockResolvedValue(state);
+		const updateSessionCompactionState = vi
+			.fn()
+			.mockResolvedValue({ updated: true });
+		const transport = createTransport({
+			sessionHost: {
+				readSessionCompactionState,
+				updateSessionCompactionState,
+			},
+		});
+		const ctx = getContext(transport);
+		expect(ctx.sessionState.has("session-1")).toBe(false);
+
+		const attachReply = await transport.handleCommand({
+			version: "v1",
+			requestId: "req-attach",
+			command: "session.attach",
+			clientId: "viewer-client",
+			sessionId: "session-1",
+		});
+
+		expect(attachReply).toMatchObject({ ok: true });
+		expect(
+			ctx.sessionState.get("session-1")?.createdByClientId,
+		).toBeUndefined();
+		expect(
+			ctx.sessionState.get("session-1")?.participants.has("viewer-client"),
+		).toBe(true);
+
+		const getReply = await transport.handleCommand({
+			version: "v1",
+			requestId: "req-compact-get",
+			command: "session.compaction.get",
+			clientId: "viewer-client",
+			sessionId: "session-1",
+		});
+		const updateReply = await transport.handleCommand({
+			version: "v1",
+			requestId: "req-compact-update",
+			command: "session.compaction.update",
+			clientId: "viewer-client",
+			sessionId: "session-1",
+			payload: { state },
+		});
+
+		expect(getReply).toMatchObject({
+			ok: false,
+			error: { code: "session_wrong_client" },
+		});
+		expect(updateReply).toMatchObject({
+			ok: false,
+			error: { code: "session_wrong_client" },
+		});
+		expect(readSessionCompactionState).not.toHaveBeenCalled();
+		expect(updateSessionCompactionState).not.toHaveBeenCalled();
+	});
+
 	it("returns compaction sidecar state to the server-owned session client", async () => {
 		const state = createSessionCompactionState({
 			sourceMessages: [{ role: "user", content: "source" }],
