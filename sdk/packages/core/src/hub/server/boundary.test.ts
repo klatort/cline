@@ -13,6 +13,7 @@ import {
 	requestToolApproval,
 } from "./handlers/approval-handlers";
 import {
+	ensureSessionParticipant,
 	ensureSessionState,
 	type HubTransportContext,
 } from "./handlers/context";
@@ -920,6 +921,85 @@ describe("HubServerTransport boundaries", () => {
 		});
 		expect(readSessionCompactionState).not.toHaveBeenCalled();
 		expect(updateSessionCompactionState).not.toHaveBeenCalled();
+	});
+
+	it("clears compaction sidecar ownership when the owner detaches", async () => {
+		const readSessionCompactionState = vi.fn();
+		const transport = createTransport({
+			sessionHost: { readSessionCompactionState },
+		});
+		const ctx = getContext(transport);
+		ensureSessionState(ctx, "session-1", "owner-client", "creator");
+		ensureSessionParticipant(ctx, "session-1", "viewer-client", "participant");
+
+		const detachReply = await transport.handleCommand({
+			version: "v1",
+			requestId: "req-detach",
+			command: "session.detach",
+			clientId: "owner-client",
+			sessionId: "session-1",
+		});
+
+		expect(detachReply).toMatchObject({ ok: true });
+		expect(
+			ctx.sessionState.get("session-1")?.participants.has("viewer-client"),
+		).toBe(true);
+		expect(
+			ctx.sessionState.get("session-1")?.createdByClientId,
+		).toBeUndefined();
+
+		const getReply = await transport.handleCommand({
+			version: "v1",
+			requestId: "req-compact-get",
+			command: "session.compaction.get",
+			clientId: "viewer-client",
+			sessionId: "session-1",
+		});
+
+		expect(getReply).toMatchObject({
+			ok: false,
+			error: { code: "session_wrong_client" },
+		});
+		expect(readSessionCompactionState).not.toHaveBeenCalled();
+	});
+
+	it("clears compaction sidecar ownership when the owner unregisters", async () => {
+		const readSessionCompactionState = vi.fn();
+		const transport = createTransport({
+			sessionHost: { readSessionCompactionState },
+		});
+		const ctx = getContext(transport);
+		ensureSessionState(ctx, "session-1", "owner-client", "creator");
+		ensureSessionParticipant(ctx, "session-1", "viewer-client", "participant");
+
+		const unregisterReply = await transport.handleCommand({
+			version: "v1",
+			requestId: "req-unregister",
+			command: "client.unregister",
+			clientId: "owner-client",
+		});
+
+		expect(unregisterReply).toMatchObject({ ok: true });
+		expect(
+			ctx.sessionState.get("session-1")?.participants.has("viewer-client"),
+		).toBe(true);
+		expect(
+			ctx.sessionState.get("session-1")?.createdByClientId,
+		).toBeUndefined();
+
+		const getReply = await transport.handleCommand({
+			version: "v1",
+			requestId: "req-compact-get",
+			command: "session.compaction.get",
+			clientId: "viewer-client",
+			sessionId: "session-1",
+		});
+
+		expect(getReply).toMatchObject({
+			ok: false,
+			error: { code: "session_wrong_client" },
+		});
+		expect(readSessionCompactionState).not.toHaveBeenCalled();
 	});
 
 	it("returns compaction sidecar state to the server-owned session client", async () => {

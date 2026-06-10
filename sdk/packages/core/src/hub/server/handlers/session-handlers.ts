@@ -669,12 +669,11 @@ export async function handleSessionDetach(
 		);
 	}
 	const clientId = envelope.clientId?.trim() || "hub-client";
-	const ownerClientId = getCapabilityOwnerClientId(ctx, sessionId) ?? clientId;
 	const state = ctx.sessionState.get(sessionId);
 	if (state) {
 		state.participants.delete(clientId);
 		if (state.createdByClientId === clientId) {
-			state.createdByClientId = ownerClientId;
+			state.createdByClientId = undefined;
 		}
 		if (state.participants.size === 0) {
 			ctx.sessionState.delete(sessionId);
